@@ -19,8 +19,8 @@ import java.util.UUID;
 @SpringBootApplication
 public class DemoApplication {
 
-	public static void main(String[] args) {
-		SpringApplication.run(DemoApplication.class, args);
+    public static void main(String[] args) {
+        SpringApplication.run(DemoApplication.class, args);
 
     }
 }
@@ -38,27 +38,22 @@ class TestController {
     }
 
     @GetMapping("/hello")
-    public Mono<String> hello() {
+    public Flux<String> hello() {
         Flux<String> keyFlux = Flux.range(0, 50).map(i -> ("Key-" + i));
 
-        Flux<ReactiveStringCommands.SetCommand> generator = keyFlux.map(String::getBytes).map(ByteBuffer::wrap) //
-                .map(key -> ReactiveStringCommands.SetCommand.set(key) //
+        Flux<ReactiveStringCommands.SetCommand> generator = keyFlux.map(String::getBytes).map(ByteBuffer::wrap)
+                .map(key -> ReactiveStringCommands.SetCommand.set(key)
                         .value(ByteBuffer.wrap(UUID.randomUUID().toString().getBytes())));
 
-        this.connection.stringCommands() //
-                .set(generator) //
-                .then() //
+        connection.stringCommands()
+                .set(generator)
+                .then()
                 .block();
 
-        this.connection.keyCommands() //
-                .keys(ByteBuffer.wrap(serializer.serialize("Key*"))) //
-                .flatMapMany(Flux::fromIterable) //
-                .doOnNext(byteBuffer -> System.out.println(toString(byteBuffer))) //
-                .count() //
-                .doOnSuccess(count -> System.out.println(String.format("Total No. found: %s", count))) //
-                .block();
-        
-        return Mono.just("Hello");
+        return connection.keyCommands()
+                .keys(ByteBuffer.wrap(serializer.serialize("Key*")))
+                .flatMapMany(Flux::fromIterable)
+                .map(TestController::toString);
     }
 
     private static String toString(ByteBuffer byteBuffer) {
