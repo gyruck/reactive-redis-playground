@@ -1,0 +1,59 @@
+buildscript {
+	ext {
+		springBootVersion = '2.0.0.M6'
+	}
+	repositories {
+		mavenCentral()
+		maven { url "https://repo.spring.io/snapshot" }
+		maven { url "https://repo.spring.io/milestone" }
+        maven { url "http://dl.bintray.com/amirk/maven" }
+	}
+	dependencies {
+		classpath("org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}")
+        classpath("ajk.gradle.redis:gradle-redis-plugin:0.0.8")
+	}
+}
+
+apply plugin: 'java'
+apply plugin: 'idea'
+apply plugin: 'org.springframework.boot'
+apply plugin: 'io.spring.dependency-management'
+apply plugin: 'ajk.gradle.redis'
+
+group = 'com.example'
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = 1.8
+
+repositories {
+	mavenCentral()
+	maven { url "https://repo.spring.io/snapshot" }
+	maven { url "https://repo.spring.io/milestone" }
+}
+
+
+dependencies {
+	compile('org.springframework.boot:spring-boot-starter-actuator')
+	compile('org.springframework.boot:spring-boot-starter-cache')
+	compile('org.springframework.boot:spring-boot-starter-webflux')
+	compile('org.springframework.boot:spring-boot-starter-data-redis')
+    compile('com.github.kstyrc:embedded-redis:0.6')
+	compileOnly('org.projectlombok:lombok')
+	testCompile('org.springframework.boot:spring-boot-starter-test')
+	testCompile('io.projectreactor:reactor-test')
+}
+
+bootRun {
+    doFirst {
+        startRedis {
+//            redisVersion = "latest"
+            port = 6379
+            dataDir = file("$buildDir/redis-$port")
+        }
+    }
+
+    doLast {
+        stopRedis {
+            port = 6379
+        }
+    }
+}
