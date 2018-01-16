@@ -1,5 +1,6 @@
 package com.example.demo;
 
+import io.micrometer.core.annotation.Timed;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -21,7 +22,6 @@ public class DemoApplication {
 
     public static void main(String[] args) {
         SpringApplication.run(DemoApplication.class, args);
-
     }
 }
 
@@ -38,7 +38,27 @@ class TestController {
     }
 
     @GetMapping("/hello")
+    @Timed
     public Flux<String> hello() {
+
+        return getEntry("1")
+                .concatWith(getEntry("2"))
+                .concatWith(getEntry("3"))
+                .concatWith(getEntry("4"))
+                .map(TestController::toString);
+//        return connection.stringCommands().get(ByteBuffer.wrap(serializer.serialize("Key-1"))).map(TestController::toString);
+//        return connection.keyCommands()
+//                .keys(ByteBuffer.wrap(serializer.serialize("Key*")))
+//                .flatMapMany(Flux::fromIterable)
+//                .map(TestController::toString);
+    }
+
+    private Mono<ByteBuffer> getEntry(String key) {
+        return connection.stringCommands().get(ByteBuffer.wrap(serializer.serialize("Key-" + key)));
+    }
+
+    @GetMapping("/populate")
+    public Mono<Void> populate() {
         Flux<String> keyFlux = Flux.range(0, 50).map(i -> ("Key-" + i));
 
         Flux<ReactiveStringCommands.SetCommand> generator = keyFlux.map(String::getBytes).map(ByteBuffer::wrap)
@@ -49,15 +69,10 @@ class TestController {
                 .set(generator)
                 .then()
                 .block();
-
-        return connection.keyCommands()
-                .keys(ByteBuffer.wrap(serializer.serialize("Key*")))
-                .flatMapMany(Flux::fromIterable)
-                .map(TestController::toString);
+        return Mono.empty();
     }
 
     private static String toString(ByteBuffer byteBuffer) {
-
         byte[] bytes = new byte[byteBuffer.remaining()];
         byteBuffer.get(bytes);
         return new String(bytes);
